@@ -36,10 +36,10 @@ export class MLBApi {
 
   // Preload headshots for all players in transactions
   async preloadPlayerHeadshots(transactions: Transaction[]): Promise<Transaction[]> {
-    const uniquePlayerIds = [...new Set(transactions
+    const uniquePlayerIds = Array.from(new Set(transactions
       .filter(t => t.playerId)
       .map(t => t.playerId!)
-    )];
+    ));
 
     console.log(`Preloading headshots for ${uniquePlayerIds.length} players...`);
 
@@ -59,7 +59,7 @@ export class MLBApi {
     });
 
     // Wait for all headshot requests to complete
-    await Promise.allSettled(headshotPromises);
+    await Promise.all(headshotPromises);
 
     // Update transactions with headshot URLs
     const updatedTransactions = transactions.map(transaction => ({
@@ -124,7 +124,7 @@ export class MLBApi {
             transaction.person && 
             transaction.fromTeam.id !== transaction.toTeam.id &&
             // At least one team must be an MLB club
-            (mlbTeamIds.includes(transaction.fromTeam.id) || mlbTeamIds.includes(transaction.toTeam.id))) {
+            (mlbTeamIds.indexOf(transaction.fromTeam.id) !== -1 || mlbTeamIds.indexOf(transaction.toTeam.id) !== -1)) {
           
           const parsedTransaction = {
             id: `${transaction.id}-${transaction.person.id}`,
