@@ -567,13 +567,13 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
           scrollbarWidth: 'none',
           msOverflowStyle: 'none'
         }}>
-          {[...activeMovements].reverse().map((movement, index) => (
+          {[...activeMovements].reverse().map((movement) => (
             <motion.div
-              key={`history-${movement.id}-${index}`}
+              key={`history-${movement.id}`}
               className="history-item"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
+              transition={{ duration: 0.3 }}
               style={{
                 background: 'rgba(255,255,255,0.1)',
                 borderRadius: '8px',
