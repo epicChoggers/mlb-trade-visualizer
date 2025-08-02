@@ -25,7 +25,6 @@ interface TeamPosition {
   division: string;
 }
 
-// MLB Stadium coordinates data
 const mlbStadiums = [
   { team: "Arizona Diamondbacks", stadium: "Chase Field", city: "Phoenix", state: "AZ", coordinates: { latitude: 33.44527778, longitude: -112.0669444 } },
   { team: "Atlanta Braves", stadium: "Truist Park", city: "Cumberland", state: "GA", coordinates: { latitude: 33.8906, longitude: -84.4678 } },
