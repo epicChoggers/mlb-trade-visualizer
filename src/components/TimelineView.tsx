@@ -87,14 +87,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
   useEffect(() => {
     if (transactions.length === 0) return;
 
-    // Filter transactions to only include those from July 1st onwards
-    const julyStartDate = new Date('2025-07-01');
-    const filteredTransactions = transactions.filter(transaction => {
-      const transactionDate = new Date(transaction.date);
-      return transactionDate >= julyStartDate;
-    });
-
-    const movements: PlayerMovement[] = filteredTransactions.map(transaction => {
+    const movements: PlayerMovement[] = transactions.map(transaction => {
       const fromTeam = teams.find(team => team.name === transaction.fromTeam) || null;
       const toTeam = teams.find(team => team.name === transaction.toTeam) || null;
 
@@ -257,7 +250,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
             />
           </div>
           <span className="progress-text">
-            {currentTimeIndex} / {playerMovements.length} movements
+            {currentTimeIndex + 1} / {playerMovements.length} movements
           </span>
         </div>
       </div>
@@ -274,7 +267,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
           }}
         >
           <img 
-            src="./usa.svg" 
+            src="/usa.svg" 
             alt="United States Map"
             className="us-map-svg"
             style={{
@@ -443,85 +436,106 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
         </div>
 
         {/* Animated player movement: only the currently moving player, with headshot */}
-        {activeMovements.length > 0 && (() => {
-          const movement = activeMovements[activeMovements.length - 1];
-          if (!movement.fromTeam || !movement.toTeam) return null;
-          
-          return (
-            <motion.div
-              key={movement.id}
-              className="player-movement"
-              initial={{ 
-                left: getTeamCenter(movement.fromTeam).x + 5, 
-                top: getTeamCenter(movement.fromTeam).y + 4, 
-                opacity: 1
-              }}
-              animate={{ 
-                left: getTeamCenter(movement.toTeam).x + 5, 
-                top: getTeamCenter(movement.toTeam).y + 4, 
-                opacity: 1
-              }}
-              transition={{ duration: 2, ease: "easeInOut" }}
-              style={{
-                position: 'absolute',
-                zIndex: 1000,
-                pointerEvents: 'none',
-                width: 'auto',
-                height: 'auto',
-                transformOrigin: 'center center'
-              }}
-            >
-              <div className="player-name" style={{
-                position: 'absolute',
-                top: '-18px',
-                left: '50%',
-                transform: 'translateX(-17%)',
-                textAlign: 'center',
-                fontSize: '12px',
-                color: 'white',
-                textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
-                whiteSpace: 'nowrap',
-                width: 'max-content',
-                zIndex: 1001
-              }}>{movement.playerName}</div>
-              <div
-                className="player-headshot"
-                style={{ 
-                  width: 50, 
-                  height: 50, 
-                  borderRadius: '50%', 
-                  border: '3px solid white', 
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-                  background: '#666',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: '16px',
-                  overflow: 'hidden'
+        <AnimatePresence>
+          {activeMovements.length > 0 && (() => {
+            const movement = activeMovements[activeMovements.length - 1];
+            if (!movement.fromTeam || !movement.toTeam) return null;
+            
+            const fromCenter = getTeamCenter(movement.fromTeam);
+            const toCenter = getTeamCenter(movement.toTeam);
+            
+            // Add offset to adjust for visual centering
+            const offsetX = 5; // Move left
+            const offsetY = 4; // Move up
+            
+            const adjustedFrom = {
+              x: fromCenter.x + offsetX,
+              y: fromCenter.y + offsetY
+            };
+            const adjustedTo = {
+              x: toCenter.x + offsetX,
+              y: toCenter.y + offsetY
+            };
+            
+            console.log(`Player movement from ${adjustedFrom.x},${adjustedFrom.y} to ${adjustedTo.x},${adjustedTo.y}`);
+            
+            return (
+              <motion.div
+                key={movement.id}
+                className="player-movement"
+                initial={{ 
+                  left: adjustedFrom.x, 
+                  top: adjustedFrom.y, 
+                  opacity: 1
+                }}
+                animate={{ 
+                  left: adjustedTo.x, 
+                  top: adjustedTo.y, 
+                  opacity: 1
+                }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 2, ease: "easeInOut" }}
+                style={{
+                  position: 'absolute',
+                  zIndex: 1000,
+                  pointerEvents: 'none',
+                  width: 'auto',
+                  height: 'auto',
+                  transformOrigin: 'center center'
                 }}
               >
-                <img 
-                  src={movement.headshotUrl || mlbApi.getPlayerHeadshot(movement.playerId || '')}
-                  alt={movement.playerName}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    borderRadius: '50%'
+                <div className="player-name" style={{
+                  position: 'absolute',
+                  top: '-18px',
+                  left: '50%',
+                  transform: 'translateX(-17%)',
+                  textAlign: 'center',
+                  fontSize: '12px',
+                  color: 'white',
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                  whiteSpace: 'nowrap',
+                  width: 'max-content',
+                  zIndex: 1001
+                }}>{movement.playerName}</div>
+                <div
+                  className="player-headshot"
+                  style={{ 
+                    width: 50, 
+                    height: 50, 
+                    borderRadius: '50%', 
+                    border: '3px solid white', 
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                    background: '#666',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '16px',
+                    overflow: 'hidden'
                   }}
-                  onError={(e) => {
-                    // Fallback to initial if image fails to load
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    target.nextElementSibling!.textContent = movement.playerName.charAt(0);
-                  }}
-                />
-                <span style={{ display: 'none' }}>{movement.playerName.charAt(0)}</span>
-              </div>
-            </motion.div>
-          );
-        })()}
+                >
+                  <img 
+                    src={movement.headshotUrl || mlbApi.getPlayerHeadshot(movement.playerId || '')}
+                    alt={movement.playerName}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '50%'
+                    }}
+                    onError={(e) => {
+                      // Fallback to initial if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.nextElementSibling!.textContent = movement.playerName.charAt(0);
+                    }}
+                  />
+                  <span style={{ display: 'none' }}>{movement.playerName.charAt(0)}</span>
+                </div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
       </div>
       </div>
 
