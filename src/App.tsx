@@ -12,7 +12,7 @@ const App: React.FC = () => {
 
 
   // Trade deadline dates for 2025 - two weeks leading up to deadline
-  const startDate = '2025-07-01';
+  const startDate = '2025-07-15';
   const endDate = '2025-08-01';
 
   useEffect(() => {
