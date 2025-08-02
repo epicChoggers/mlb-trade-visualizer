@@ -221,8 +221,8 @@ code {
 /* Timeline View Styles */
 .timeline-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: stretch;
   gap: 2rem;
   padding: 2rem;
   min-height: 80vh;
@@ -367,7 +367,6 @@ code {
 .team-node .team-logo {
   width: 60px;
   height: 60px;
-  background: white;
   border-radius: 50%;
   display: flex;
   align-items: center;

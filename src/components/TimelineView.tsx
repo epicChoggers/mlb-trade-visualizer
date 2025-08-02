@@ -12,6 +12,7 @@ interface PlayerMovement {
   id: string;
   playerName: string;
   playerId: string;
+  headshotUrl?: string;
   fromTeam: Team | null;
   toTeam: Team | null;
   date: string;
@@ -65,19 +66,12 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
   const [activeMovements, setActiveMovements] = useState<PlayerMovement[]>([]);
   const [hoveredTeam, setHoveredTeam] = useState<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Add these refs near the top of your component
-  const dragHandlersRef = useRef<{
-    onMouseMove?: (e: MouseEvent) => void;
-    onMouseUp?: () => void;
-  }>({});
 
-  // Debug mode state
-  const [debugMode, setDebugMode] = useState(false);
   const [mapBounds, setMapBounds] = useState({
-    minLat: 22,
-    maxLat: 51.9,
-    minLng: -124.3,
-    maxLng: -66
+    minLat: 20.6,
+    maxLat: 51.3,
+    minLng: -123.3,
+    maxLng: -65.1
   });
   const [mapSize, setMapSize] = useState({
     width: 1100,
@@ -88,12 +82,6 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
     y: 50
   });
   const [mapRotation, setMapRotation] = useState(0);
-  const [hoveredCoordinates, setHoveredCoordinates] = useState<{lat: number, lng: number} | null>(null);
-
-  // Drag and drop state
-  const [draggedTeam, setDraggedTeam] = useState<number | null>(null);
-  const [customPositions, setCustomPositions] = useState<Record<number, {x: number, y: number}>>({});
-  const [isDragging, setIsDragging] = useState(false);
 
   // Process transactions into player movements
   useEffect(() => {
@@ -107,6 +95,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
         id: transaction.id,
         playerName: transaction.playerName || 'Unknown Player',
         playerId: transaction.playerId || '',
+        headshotUrl: transaction.headshotUrl,
         fromTeam,
         toTeam,
         date: transaction.date,
@@ -130,7 +119,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
           }
           return prev + 1;
         });
-      }, 2000); // 2 seconds per movement
+      }, 1000); // 1 second per movement (decreased from 2 seconds)
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -186,17 +175,8 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
     return { x: x + mapOffset.x, y: y + mapOffset.y };
   };
 
-  // Get team position on the map using stadium coordinates or custom position
+  // Get team position on the map using stadium coordinates
   const getTeamPosition = (team: Team): TeamPosition => {
-    // If we have a custom position for this team, use it
-    if (customPositions[team.id]) {
-      return {
-        x: customPositions[team.id].x,
-        y: customPositions[team.id].y,
-        division: 'Unknown'
-      };
-    }
-
     const stadiumData = mlbStadiums.find(stadium => stadium.team === team.name);
     if (!stadiumData) {
       console.warn(`No stadium data for team: ${team.name} (${team.id})`);
@@ -212,110 +192,17 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
     };
   };
 
-  // Handle map click for coordinate debugging
-  const handleMapClick = (event: React.MouseEvent) => {
-    if (!debugMode) return;
-    
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left - mapOffset.x;
-    const y = event.clientY - rect.top - mapOffset.y;
-    
-    // Convert screen coordinates back to geographical coordinates
-    const bounds = mapBounds;
-    const lng = (x / mapSize.width) * (bounds.maxLng - bounds.minLng) + bounds.minLng;
-    const lat = bounds.maxLat - (y / mapSize.height) * (bounds.maxLat - bounds.minLat);
-    
-    setHoveredCoordinates({ lat, lng });
-  };
-
-  const handleDragStart = (e: React.MouseEvent, teamId: number) => {
-    if (!debugMode) return;
-    e.preventDefault();
-    setIsDragging(true); // Set isDragging to true
-  
-    // Store the ID of the team being dragged
-    setDraggedTeam(teamId);
-  
-    // Define and store the handlers to be used on the window
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      // We need to calculate the position relative to the map container
-      const mapElement = document.querySelector('.us-map-background');
-      if (!mapElement) return;
-  
-      const rect = mapElement.getBoundingClientRect();
-      const x = moveEvent.clientX - rect.left;
-      const y = moveEvent.clientY - rect.top;
-  
-      setCustomPositions(prev => ({
-        ...prev,
-        [teamId]: { x, y }
-      }));
+  // Simple function to get the center position of a team (for player movements)
+  const getTeamCenter = (team: Team) => {
+    const position = getTeamPosition(team);
+    console.log(`Team ${team.name} center:`, position);
+    return {
+      x: position.x,
+      y: position.y
     };
-  
-    const onMouseUp = () => {
-      setIsDragging(false); // Set isDragging to false
-      setDraggedTeam(null);
-      // Cleanup: remove the event listeners from the window
-      window.removeEventListener('mousemove', dragHandlersRef.current.onMouseMove!);
-      window.removeEventListener('mouseup', dragHandlersRef.current.onMouseUp!);
-      dragHandlersRef.current = {};
-    };
-  
-    // Store the handlers in the ref and attach them to the window
-    dragHandlersRef.current = { onMouseMove, onMouseUp };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
   };
 
-  const handleDrag = (e: React.MouseEvent) => {
-    if (!debugMode || !draggedTeam) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    setCustomPositions(prev => ({
-      ...prev,
-      [draggedTeam]: { x, y }
-    }));
-  };
 
-  const handleDragEnd = () => {
-    if (!debugMode) return;
-    setDraggedTeam(null);
-    setIsDragging(false);
-  };
-
-  // Reset custom positions
-  const resetCustomPositions = () => {
-    setCustomPositions({});
-  };
-
-  // Export custom positions as coordinates
-  const exportCustomPositions = () => {
-    const positions = Object.keys(customPositions).map((teamIdStr) => {
-      const teamId = parseInt(teamIdStr);
-      const pos = customPositions[teamId];
-      const team = teams.find(t => t.id === teamId);
-      const bounds = mapBounds;
-      
-      // Convert screen coordinates back to geographical coordinates
-      const x = pos.x - mapOffset.x;
-      const y = pos.y - mapOffset.y;
-      const lng = (x / mapSize.width) * (bounds.maxLng - bounds.minLng) + bounds.minLng;
-      const lat = bounds.maxLat - (y / mapSize.height) * (bounds.maxLat - bounds.minLat);
-      
-      return {
-        teamId: teamId,
-        teamName: team?.name || 'Unknown',
-        coordinates: { latitude: lat, longitude: lng },
-        screenPosition: pos
-      };
-    });
-    
-    console.log('Custom Team Positions:', positions);
-    alert('Custom positions exported to console!');
-  };
 
   if (loading) {
     return (
@@ -326,38 +213,365 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
   }
 
   return (
-    <div className="timeline-container" style={{
+    <div style={{
       display: 'flex',
+      flexDirection: 'row',
       height: '100vh',
-      gap: '20px',
-      padding: '20px'
+      padding: '20px',
+      gap: '40px'
     }}>
-      {/* Movement history - Left sidebar */}
-      <div className="movement-history" style={{
-        width: '250px',
+      {/* Main visualization area */}
+      <div style={{
+        flex: 1,
+        position: 'relative'
+      }}>
+
+
+      <div className="timeline-controls">
+        <button 
+          onClick={handlePlayPause}
+          className={`play-button ${isPlaying ? 'pause' : 'play'}`}
+        >
+          {isPlaying ? '⏸️ Pause' : '▶️ Play'}
+        </button>
+        <button onClick={handleReset} className="reset-button">
+          🔄 Reset
+        </button>
+        <button onClick={handleSkip} className="skip-button">
+          ⏭️ Skip to End
+        </button>
+        <div className="timeline-progress">
+          <div className="progress-bar">
+            <div 
+              className="progress-fill"
+              style={{ 
+                width: `${playerMovements.length > 0 ? (currentTimeIndex + 1) / playerMovements.length * 100 : 0}%` 
+              }}
+            />
+          </div>
+          <span className="progress-text">
+            {currentTimeIndex + 1} / {playerMovements.length} movements
+          </span>
+        </div>
+      </div>
+
+      <div className="timeline-visualization">
+        {/* Central timeline hub */}
+
+
+        {/* US Map Background */}
+        <div 
+          className="us-map-background" 
+          style={{ 
+            position: 'relative'
+          }}
+        >
+          <img 
+            src="./usa.svg" 
+            alt="United States Map"
+            className="us-map-svg"
+            style={{
+              position: 'absolute',
+              top: `${mapOffset.y}px`,
+              left: `${mapOffset.x}px`,
+              width: `${mapSize.width}px`,
+              height: `${mapSize.height}px`,
+              transform: `rotate(${mapRotation}deg)`,
+              transformOrigin: 'center center',
+              zIndex: 2,
+              filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))'
+            }}
+          />
+        </div>
+
+        {/* Teams positioned on the map */}
+        <div className="teams-map">
+          {teams.map((team) => {
+            const position = getTeamPosition(team);
+            // Only highlight teams involved in the CURRENT movement (most recent one)
+            const currentMovement = activeMovements.length > 0 ? activeMovements[activeMovements.length - 1] : null;
+            const isCurrentlyActive = currentMovement && (
+              currentMovement.fromTeam?.id === team.id || currentMovement.toTeam?.id === team.id
+            );
+            
+            // Get players for this team
+            const teamPlayers = activeMovements.filter(movement => 
+              movement.toTeam?.id === team.id
+            );
+
+            return (
+              <motion.div
+                key={team.id}
+                className={`team-node ${isCurrentlyActive ? 'active' : ''}`}
+                style={{
+                  position: 'absolute',
+                  left: `${position.x}px`,
+                  top: `${position.y}px`,
+                  cursor: 'default',
+                  zIndex: 10,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ 
+                  scale: isCurrentlyActive ? 1.2 : 1, 
+                  opacity: 1 
+                }}
+                transition={{ duration: 0.3 }}
+                onMouseEnter={() => setHoveredTeam(team.id)}
+                onMouseLeave={() => setHoveredTeam(null)}
+              >
+                <div className="team-logo" style={{
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <img 
+                    src={team.logo} 
+                    alt={team.name} 
+                    style={{
+                      maxWidth: '35px',
+                      maxHeight: '35px',
+                      width: 'auto',
+                      height: 'auto'
+                    }}
+                  />
+                </div>
+                <div className="team-name" style={{
+                  fontSize: '12px',
+                  textAlign: 'center',
+                  marginTop: '2px',
+                  color: 'white',
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                }}>
+                  {team.abbreviation}
+                </div>
+                
+                {/* Player icons on hover */}
+                {hoveredTeam === team.id && teamPlayers.length > 0 && (
+                  <div className="team-players">
+                    {teamPlayers.map((player, playerIndex) => (
+                      <motion.div
+                        key={`hover-${player.id}-${playerIndex}`}
+                        className="hover-player-icon"
+                        initial={{ scale: 0, y: 0 }}
+                        animate={{ 
+                          scale: 1, 
+                          y: [-5, 5, -5],
+                        }}
+                        transition={{ 
+                          duration: 0.6,
+                          repeat: Infinity,
+                          delay: playerIndex * 0.1
+                        }}
+                        style={{
+                          position: 'absolute',
+                          left: '50%',
+                          top: `${-45 - (playerIndex * 35)}px`,
+                          transform: 'translateX(-50%)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          zIndex: 1000,
+                          width: 'auto',
+                          height: 'auto'
+                        }}
+                      >
+                        <div className="player-name-small" style={{
+                          textAlign: 'center',
+                          marginBottom: '4px',
+                          fontSize: '10px',
+                          color: 'white',
+                          textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                          whiteSpace: 'nowrap',
+                          width: 'max-content',
+                          zIndex: 1001
+                        }}>{player.playerName}</div>
+                        <div
+                          className="player-headshot-small"
+                          style={{ 
+                            width: 30, 
+                            height: 30, 
+                            borderRadius: '50%', 
+                            border: '2px solid white', 
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            background: '#666',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '12px',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <img 
+                            src={player.headshotUrl || mlbApi.getPlayerHeadshot(player.playerId || '')}
+                            alt={player.playerName}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              borderRadius: '50%'
+                            }}
+                            onError={(e) => {
+                              // Fallback to initial if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling!.textContent = player.playerName.charAt(0);
+                            }}
+                          />
+                          <span style={{ display: 'none' }}>{player.playerName.charAt(0)}</span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Animated player movement: only the currently moving player, with headshot */}
+        <AnimatePresence>
+          {activeMovements.length > 0 && (() => {
+            const movement = activeMovements[activeMovements.length - 1];
+            if (!movement.fromTeam || !movement.toTeam) return null;
+            
+            const fromCenter = getTeamCenter(movement.fromTeam);
+            const toCenter = getTeamCenter(movement.toTeam);
+            
+            // Add offset to adjust for visual centering
+            const offsetX = 5; // Move left
+            const offsetY = 4; // Move up
+            
+            const adjustedFrom = {
+              x: fromCenter.x + offsetX,
+              y: fromCenter.y + offsetY
+            };
+            const adjustedTo = {
+              x: toCenter.x + offsetX,
+              y: toCenter.y + offsetY
+            };
+            
+            console.log(`Player movement from ${adjustedFrom.x},${adjustedFrom.y} to ${adjustedTo.x},${adjustedTo.y}`);
+            
+            return (
+              <motion.div
+                key={movement.id}
+                className="player-movement"
+                initial={{ 
+                  left: adjustedFrom.x, 
+                  top: adjustedFrom.y, 
+                  opacity: 1
+                }}
+                animate={{ 
+                  left: adjustedTo.x, 
+                  top: adjustedTo.y, 
+                  opacity: 1
+                }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 2, ease: "easeInOut" }}
+                style={{
+                  position: 'absolute',
+                  zIndex: 1000,
+                  pointerEvents: 'none',
+                  width: 'auto',
+                  height: 'auto',
+                  transformOrigin: 'center center'
+                }}
+              >
+                <div className="player-name" style={{
+                  position: 'absolute',
+                  top: '-18px',
+                  left: '50%',
+                  transform: 'translateX(-17%)',
+                  textAlign: 'center',
+                  fontSize: '12px',
+                  color: 'white',
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                  whiteSpace: 'nowrap',
+                  width: 'max-content',
+                  zIndex: 1001
+                }}>{movement.playerName}</div>
+                <div
+                  className="player-headshot"
+                  style={{ 
+                    width: 50, 
+                    height: 50, 
+                    borderRadius: '50%', 
+                    border: '3px solid white', 
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                    background: '#666',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '16px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <img 
+                    src={movement.headshotUrl || mlbApi.getPlayerHeadshot(movement.playerId || '')}
+                    alt={movement.playerName}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '50%'
+                    }}
+                    onError={(e) => {
+                      // Fallback to initial if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.nextElementSibling!.textContent = movement.playerName.charAt(0);
+                    }}
+                  />
+                  <span style={{ display: 'none' }}>{movement.playerName.charAt(0)}</span>
+                </div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
+      </div>
+      </div>
+
+      {/* Movement history - Right sidebar */}
+      <div style={{
+        width: '300px',
         height: '100%',
         background: 'rgba(0,0,0,0.8)',
         borderRadius: '12px',
         padding: '20px',
-        overflowY: 'auto',
-        flexShrink: 0
+        display: 'flex',
+        flexDirection: 'column',
+        flexShrink: 0,
+        marginLeft: 'auto'
       }}>
         <h3 style={{
           color: 'white',
           margin: '0 0 20px 0',
           fontSize: '18px',
-          textAlign: 'center'
+          textAlign: 'center',
+          flexShrink: 0
         }}>Trade Timeline</h3>
-        <div className="history-list" style={{
+        <div style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '15px'
+          gap: '15px',
+          flex: 1,
+          overflowY: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
         }}>
           {activeMovements.map((movement, index) => (
             <motion.div
               key={`history-${movement.id}-${index}`}
               className="history-item"
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
               style={{
@@ -389,561 +603,6 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
             </motion.div>
           ))}
         </div>
-      </div>
-
-      {/* Main visualization area */}
-      <div style={{
-        flex: 1,
-        position: 'relative'
-      }}>
-        {/* Debug Controls */}
-        {debugMode && (
-          <div className="debug-panel" style={{
-          position: 'fixed',
-          top: '10px',
-          right: '10px',
-          background: 'rgba(0,0,0,0.9)',
-          color: 'white',
-          padding: '15px',
-          borderRadius: '8px',
-          zIndex: 1000,
-          minWidth: '300px',
-          maxHeight: '80vh',
-          overflowY: 'auto'
-        }}>
-          <h3 style={{ margin: '0 0 15px 0', color: '#00ff00' }}>🔧 Debug Mode</h3>
-          
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>Map Bounds:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label>Min Lat: <input 
-                  type="number" 
-                  value={mapBounds.minLat} 
-                  onChange={(e) => setMapBounds(prev => ({ ...prev, minLat: parseFloat(e.target.value) }))}
-                  step="0.1"
-                  style={{ width: '60px' }}
-                /></label>
-              </div>
-              <div>
-                <label>Max Lat: <input 
-                  type="number" 
-                  value={mapBounds.maxLat} 
-                  onChange={(e) => setMapBounds(prev => ({ ...prev, maxLat: parseFloat(e.target.value) }))}
-                  step="0.1"
-                  style={{ width: '60px' }}
-                /></label>
-              </div>
-              <div>
-                <label>Min Lng: <input 
-                  type="number" 
-                  value={mapBounds.minLng} 
-                  onChange={(e) => setMapBounds(prev => ({ ...prev, minLng: parseFloat(e.target.value) }))}
-                  step="0.1"
-                  style={{ width: '60px' }}
-                /></label>
-              </div>
-              <div>
-                <label>Max Lng: <input 
-                  type="number" 
-                  value={mapBounds.maxLng} 
-                  onChange={(e) => setMapBounds(prev => ({ ...prev, maxLng: parseFloat(e.target.value) }))}
-                  step="0.1"
-                  style={{ width: '60px' }}
-                /></label>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>Map Size:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label>Width: <input 
-                  type="number" 
-                  value={mapSize.width} 
-                  onChange={(e) => setMapSize(prev => ({ ...prev, width: parseInt(e.target.value) }))}
-                  style={{ width: '60px' }}
-                /></label>
-              </div>
-              <div>
-                <label>Height: <input 
-                  type="number" 
-                  value={mapSize.height} 
-                  onChange={(e) => setMapSize(prev => ({ ...prev, height: parseInt(e.target.value) }))}
-                  style={{ width: '60px' }}
-                /></label>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>Map Offset:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label>X: <input 
-                  type="number" 
-                  value={mapOffset.x} 
-                  onChange={(e) => setMapOffset(prev => ({ ...prev, x: parseInt(e.target.value) }))}
-                  style={{ width: '60px' }}
-                /></label>
-              </div>
-              <div>
-                <label>Y: <input 
-                  type="number" 
-                  value={mapOffset.y} 
-                  onChange={(e) => setMapOffset(prev => ({ ...prev, y: parseInt(e.target.value) }))}
-                  style={{ width: '60px' }}
-                /></label>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>Map Rotation:</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <input 
-                type="range" 
-                min="-14" 
-                max="0" 
-                step="0.1"
-                value={mapRotation} 
-                onChange={(e) => setMapRotation(parseFloat(e.target.value))}
-                style={{ flex: 1 }}
-              />
-              <span style={{ minWidth: '40px', textAlign: 'right' }}>
-                {mapRotation}°
-              </span>
-            </div>
-          </div>
-
-          {hoveredCoordinates && (
-            <div style={{ marginBottom: '15px', padding: '10px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }}>
-              <strong>Clicked Coordinates:</strong><br/>
-              Lat: {hoveredCoordinates.lat.toFixed(6)}<br/>
-              Lng: {hoveredCoordinates.lng.toFixed(6)}
-            </div>
-          )}
-
-          <div style={{ marginBottom: '15px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <button 
-                onClick={() => {
-                  console.log('Current Debug Settings:', {
-                    mapBounds,
-                    mapSize,
-                    mapOffset,
-                    mapRotation
-                  });
-                  alert('Debug settings logged to console!');
-                }}
-                style={{
-                  background: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 12px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-              >
-                Log Settings
-              </button>
-              <button 
-                onClick={resetCustomPositions}
-                style={{
-                  background: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 12px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px'
-                }}
-              >
-                Reset Positions
-              </button>
-            </div>
-          </div>
-
-          {Object.keys(customPositions).length > 0 && (
-            <div style={{ marginBottom: '15px' }}>
-              <button 
-                onClick={exportCustomPositions}
-                style={{
-                  background: '#28a745',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 12px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  width: '100%'
-                }}
-              >
-                Export Custom Positions
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="timeline-controls">
-        <button 
-          onClick={handlePlayPause}
-          className={`play-button ${isPlaying ? 'pause' : 'play'}`}
-        >
-          {isPlaying ? '⏸️ Pause' : '▶️ Play'}
-        </button>
-        <button onClick={handleReset} className="reset-button">
-          🔄 Reset
-        </button>
-        <button onClick={handleSkip} className="skip-button">
-          ⏭️ Skip to End
-        </button>
-        <button 
-          onClick={() => setDebugMode(!debugMode)}
-          style={{
-            background: debugMode ? '#dc3545' : '#28a745',
-            color: 'white',
-            border: 'none',
-            padding: '8px 12px',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            marginLeft: '10px'
-          }}
-        >
-          {debugMode ? '🔧 Debug ON' : '🔧 Debug OFF'}
-        </button>
-        <div className="timeline-progress">
-          <div className="progress-bar">
-            <div 
-              className="progress-fill"
-              style={{ 
-                width: `${playerMovements.length > 0 ? (currentTimeIndex + 1) / playerMovements.length * 100 : 0}%` 
-              }}
-            />
-          </div>
-          <span className="progress-text">
-            {currentTimeIndex + 1} / {playerMovements.length} movements
-          </span>
-        </div>
-      </div>
-
-      <div className="timeline-visualization">
-        {/* Central timeline hub */}
-
-
-        {/* US Map Background */}
-        <div 
-          className="us-map-background" 
-          onClick={handleMapClick} 
-          style={{ 
-            cursor: debugMode ? (isDragging ? 'grabbing' : 'crosshair') : 'default',
-            position: 'relative'
-          }}
-        >
-          <img 
-            src="/usa.svg" 
-            alt="United States Map"
-            className="us-map-svg"
-            style={{
-              position: 'absolute',
-              top: `${mapOffset.y}px`,
-              left: `${mapOffset.x}px`,
-              width: `${mapSize.width}px`,
-              height: `${mapSize.height}px`,
-              transform: `rotate(${mapRotation}deg)`,
-              transformOrigin: 'center center',
-              zIndex: 2,
-              filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))'
-            }}
-          />
-          
-          {/* Debug grid overlay */}
-          {debugMode && (
-            <div style={{
-              position: 'absolute',
-              top: `${mapOffset.y}px`,
-              left: `${mapOffset.x}px`,
-              width: `${mapSize.width}px`,
-              height: `${mapSize.height}px`,
-              transform: `rotate(${mapRotation}deg)`,
-              transformOrigin: 'center center',
-              zIndex: 3,
-              pointerEvents: 'none'
-            }}>
-              {/* Grid lines */}
-              {Array.from({ length: 10 }, (_, i) => (
-                <React.Fragment key={i}>
-                  <div style={{
-                    position: 'absolute',
-                    left: `${(i + 1) * mapSize.width / 10}px`,
-                    top: '0',
-                    width: '1px',
-                    height: '100%',
-                    background: 'rgba(255,255,255,0.3)'
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    top: `${(i + 1) * mapSize.height / 10}px`,
-                    left: '0',
-                    width: '100%',
-                    height: '1px',
-                    background: 'rgba(255,255,255,0.3)'
-                  }} />
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Teams positioned on the map */}
-        <div className="teams-map">
-          {teams.map((team) => {
-            const position = getTeamPosition(team);
-            const hasActiveMovements = activeMovements.some(movement => 
-              movement.fromTeam?.id === team.id || movement.toTeam?.id === team.id
-            );
-            
-            // Get players for this team
-            const teamPlayers = activeMovements.filter(movement => 
-              movement.toTeam?.id === team.id
-            );
-
-            return (
-              <motion.div
-                key={team.id}
-                className={`team-node ${hasActiveMovements ? 'active' : ''}`}
-                style={{
-                  left: `${position.x}px`,
-                  top: `${position.y}px`,
-                  position: 'absolute',
-                  cursor: debugMode ? (isDragging && draggedTeam === team.id ? 'grabbing' : 'grab') : 'default',
-                  zIndex: draggedTeam === team.id ? 1000 : 10,
-                  transform: draggedTeam === team.id ? 'scale(1.1)' : 'scale(1)',
-                  transition: 'transform 0.1s ease'
-                }}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ 
-                  scale: hasActiveMovements ? 1.2 : 1, 
-                  opacity: 1 
-                }}
-                transition={{ duration: 0.3 }}
-                onMouseEnter={() => setHoveredTeam(team.id)}
-                onMouseLeave={() => setHoveredTeam(null)}
-                onMouseDown={(e) => handleDragStart(e, team.id)}
-                
-              >
-                <div className="team-logo" style={{
-                  width: debugMode ? '20px' : '30px',
-                  height: debugMode ? '20px' : '30px',
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  border: debugMode ? '2px solid #00ff00' : '2px solid white',
-                  boxShadow: debugMode ? '0 0 10px #00ff00' : '0 2px 8px rgba(0,0,0,0.3)',
-                  background: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <img 
-                    src={team.logo} 
-                    alt={team.name} 
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain'
-                    }}
-                  />
-                </div>
-                <div className="team-name" style={{
-                  fontSize: debugMode ? '10px' : '12px',
-                  textAlign: 'center',
-                  marginTop: '2px',
-                  color: debugMode ? '#00ff00' : 'white',
-                  textShadow: debugMode ? '0 0 5px #00ff00' : '1px 1px 2px rgba(0,0,0,0.8)'
-                }}>
-                  {team.abbreviation}
-                </div>
-                
-                {/* Debug coordinates on hover */}
-                {debugMode && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '-40px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'rgba(0,0,0,0.8)',
-                    color: 'white',
-                    padding: '5px',
-                    borderRadius: '4px',
-                    fontSize: '10px',
-                    whiteSpace: 'nowrap',
-                    zIndex: 10
-                  }}>
-                    {position.x.toFixed(0)}, {position.y.toFixed(0)}
-                  </div>
-                )}
-                
-                {/* Player icons on hover */}
-                {hoveredTeam === team.id && teamPlayers.length > 0 && !debugMode && (
-                  <div className="team-players">
-                    {teamPlayers.map((player, playerIndex) => (
-                      <motion.div
-                        key={`hover-${player.id}-${playerIndex}`}
-                        className="hover-player-icon"
-                        initial={{ scale: 0, y: 0 }}
-                        animate={{ 
-                          scale: 1, 
-                          y: [-5, 5, -5],
-                        }}
-                        transition={{ 
-                          duration: 0.6,
-                          repeat: Infinity,
-                          delay: playerIndex * 0.1
-                        }}
-                        style={{
-                          left: `${playerIndex * 25}px`,
-                          top: '-40px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center'
-                        }}
-                      >
-                        <div
-                          className="player-headshot-small"
-                          style={{ 
-                            width: 30, 
-                            height: 30, 
-                            borderRadius: '50%', 
-                            border: '2px solid white', 
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                            background: '#666',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontSize: '12px',
-                            overflow: 'hidden'
-                          }}
-                        >
-                          <img 
-                            src={mlbApi.getPlayerHeadshot(player.playerId || '')}
-                            alt={player.playerName}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              borderRadius: '50%'
-                            }}
-                            onError={(e) => {
-                              // Fallback to initial if image fails to load
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              target.nextElementSibling!.textContent = player.playerName.charAt(0);
-                            }}
-                          />
-                          <span style={{ display: 'none' }}>{player.playerName.charAt(0)}</span>
-                        </div>
-                        <div className="player-name-small" style={{
-                          textAlign: 'center',
-                          marginTop: '4px',
-                          fontSize: '10px',
-                          color: 'white',
-                          textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
-                          whiteSpace: 'nowrap',
-                          width: 'max-content',
-                          zIndex: 1001
-                        }}>{player.playerName}</div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Animated player movement: only the currently moving player, with headshot */}
-        <AnimatePresence>
-          {activeMovements.length > 0 && (() => {
-            const movement = activeMovements[activeMovements.length - 1];
-            if (!movement.fromTeam || !movement.toTeam) return null;
-            const fromPosition = getTeamPosition(movement.fromTeam);
-            const toPosition = getTeamPosition(movement.toTeam);
-            return (
-              <motion.div
-                key={movement.id}
-                className="player-movement"
-                initial={{ x: fromPosition.x, y: fromPosition.y, opacity: 1, scale: 1 }}
-                animate={{ x: toPosition.x, y: toPosition.y, opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0 }}
-                transition={{ duration: 2, ease: "easeInOut" }}
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  transform: 'translate(-50%, -50%)',
-                  zIndex: 1000,
-                  pointerEvents: 'none',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  width: 'auto',
-                  height: 'auto'
-                }}
-              >
-                <div
-                  className="player-headshot"
-                  style={{ 
-                    width: 50, 
-                    height: 50, 
-                    borderRadius: '50%', 
-                    border: '3px solid white', 
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-                    background: '#666',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '16px',
-                    overflow: 'hidden',
-                    marginBottom: '8px'
-                  }}
-                >
-                  <img 
-                    src={mlbApi.getPlayerHeadshot(movement.playerId || '')}
-                    alt={movement.playerName}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      borderRadius: '50%'
-                    }}
-                    onError={(e) => {
-                      // Fallback to initial if image fails to load
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      target.nextElementSibling!.textContent = movement.playerName.charAt(0);
-                    }}
-                  />
-                  <span style={{ display: 'none' }}>{movement.playerName.charAt(0)}</span>
-                </div>
-                <div className="player-name" style={{
-                  textAlign: 'center',
-                  fontSize: '12px',
-                  color: 'white',
-                  textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
-                  whiteSpace: 'nowrap',
-                  width: 'max-content',
-                  zIndex: 1001
-                }}>{movement.playerName}</div>
-              </motion.div>
-            );
-          })()}
-        </AnimatePresence>
-      </div>
       </div>
     </div>
   );

@@ -47,48 +47,102 @@ const TeamCircle: React.FC<TeamCircleProps> = ({ team, transactions, onTeamClick
         
         {/* Incoming players */}
         {incomingPlayers.map((transaction, index) => (
-          <motion.img
+          <motion.div
             key={`incoming-${transaction.id}`}
-            src={`https://midfield.mlbstatic.com/v1/people/${transaction.playerId}/spots/120`}
-            alt={transaction.playerName}
-            className="player-headshot"
             style={{
-              top: `${20 + (index * 25)}px`,
+              position: 'absolute',
+              top: `${20 + (index * 35)}px`,
               right: '10px',
-              zIndex: 10
+              zIndex: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
             }}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: index * 0.2, duration: 0.5 }}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = 'https://via.placeholder.com/40x40?text=' + (transaction.playerName?.charAt(0) || '?');
-            }}
-            title={`${transaction.playerName} → ${team.name}`}
-          />
+          >
+            <div style={{
+              fontSize: '8px',
+              color: 'white',
+              textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+              textAlign: 'center',
+              marginBottom: '2px',
+              whiteSpace: 'nowrap',
+              maxWidth: '50px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }} title={transaction.playerName}>
+              {transaction.playerName}
+            </div>
+            <img
+              src={transaction.headshotUrl || `https://midfield.mlbstatic.com/v1/people/${transaction.playerId}/spots/120`}
+              alt={transaction.playerName}
+              className="player-headshot"
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: '2px solid white',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+              }}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://via.placeholder.com/30x30?text=' + (transaction.playerName?.charAt(0) || '?');
+              }}
+              title={`${transaction.playerName} → ${team.name}`}
+            />
+          </motion.div>
         ))}
 
         {/* Outgoing players */}
         {outgoingPlayers.map((transaction, index) => (
-          <motion.img
+          <motion.div
             key={`outgoing-${transaction.id}`}
-            src={`https://midfield.mlbstatic.com/v1/people/${transaction.playerId}/spots/120`}
-            alt={transaction.playerName}
-            className="player-headshot"
             style={{
-              bottom: `${20 + (index * 25)}px`,
+              position: 'absolute',
+              bottom: `${20 + (index * 35)}px`,
               left: '10px',
-              zIndex: 10
+              zIndex: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
             }}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: index * 0.2, duration: 0.5 }}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = 'https://via.placeholder.com/40x40?text=' + (transaction.playerName?.charAt(0) || '?');
-            }}
-            title={`${transaction.playerName} ← ${team.name}`}
-          />
+          >
+            <div style={{
+              fontSize: '8px',
+              color: 'white',
+              textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+              textAlign: 'center',
+              marginBottom: '2px',
+              whiteSpace: 'nowrap',
+              maxWidth: '50px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }} title={transaction.playerName}>
+              {transaction.playerName}
+            </div>
+            <img
+              src={transaction.headshotUrl || `https://midfield.mlbstatic.com/v1/people/${transaction.playerId}/spots/120`}
+              alt={transaction.playerName}
+              className="player-headshot"
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: '2px solid white',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+              }}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://via.placeholder.com/30x30?text=' + (transaction.playerName?.charAt(0) || '?');
+              }}
+              title={`${transaction.playerName} ← ${team.name}`}
+            />
+          </motion.div>
         ))}
       </motion.div>
       <div className="team-name">{team.name}</div>
