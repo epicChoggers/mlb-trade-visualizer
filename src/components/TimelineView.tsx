@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, Team, mlbApi } from '../services/mlbApi';
+import usaSvg from './usa.svg';
 
 interface TimelineViewProps {
   teams: Team[];
@@ -266,7 +267,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
           }}
         >
           <img 
-            src="/usa.svg" 
+            src={usaSvg} 
             alt="United States Map"
             className="us-map-svg"
             style={{
