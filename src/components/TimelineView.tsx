@@ -213,49 +213,114 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
   }
 
   return (
-    <div style={{
+    <div className="timeline-container" style={{
       display: 'flex',
-      flexDirection: 'row',
+      flexDirection: 'column',
       height: '100vh',
-      padding: '20px',
-      gap: '40px'
+      padding: '10px',
+      gap: '10px'
     }}>
-      {/* Main visualization area */}
-      <div style={{
-        flex: 1,
-        position: 'relative'
+      {/* Controls */}
+      <div className="timeline-controls" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '10px',
+        background: 'rgba(255, 255, 255, 0.1)',
+        padding: '10px',
+        borderRadius: '25px',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        flexWrap: 'wrap'
       }}>
-
-
-      <div className="timeline-controls">
         <button 
           onClick={handlePlayPause}
-          className={`play-button ${isPlaying ? 'pause' : 'play'}`}
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '20px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '14px'
+          }}
         >
           {isPlaying ? '⏸️ Pause' : '▶️ Play'}
         </button>
-        <button onClick={handleReset} className="reset-button">
+        <button 
+          onClick={handleReset}
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '20px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '14px'
+          }}
+        >
           🔄 Reset
         </button>
-        <button onClick={handleSkip} className="skip-button">
-          ⏭️ Skip to End
+        <button 
+          onClick={handleSkip}
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '20px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            fontSize: '14px'
+          }}
+        >
+          ⏭️ Skip
         </button>
-        <div className="timeline-progress">
-          <div className="progress-bar">
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          color: 'white',
+          fontSize: '14px'
+        }}>
+          <div style={{
+            width: '100px',
+            height: '6px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            borderRadius: '3px',
+            overflow: 'hidden'
+          }}>
             <div 
-              className="progress-fill"
               style={{ 
-                width: `${playerMovements.length > 0 ? (currentTimeIndex + 1) / playerMovements.length * 100 : 0}%` 
+                height: '100%',
+                background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                width: `${playerMovements.length > 0 ? (currentTimeIndex + 1) / playerMovements.length * 100 : 0}%`,
+                transition: 'width 0.3s ease'
               }}
             />
           </div>
-          <span className="progress-text">
-            {currentTimeIndex + 1} / {playerMovements.length} movements
+          <span>
+            {currentTimeIndex + 1} / {playerMovements.length}
           </span>
         </div>
       </div>
 
-      <div className="timeline-visualization">
+      {/* Main content area */}
+      <div className="timeline-visualization" style={{
+        display: 'flex',
+        flexDirection: 'row',
+        flex: 1,
+        gap: '10px',
+        minHeight: 0
+      }}>
+        {/* Main visualization area */}
+        <div style={{
+          flex: 1,
+          position: 'relative',
+          minWidth: 0
+        }}>
         {/* Central timeline hub */}
 
 
@@ -537,7 +602,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
           })()}
         </AnimatePresence>
       </div>
-      </div>
+        </div>
 
       {/* Movement history - Right sidebar */}
       <div style={{
