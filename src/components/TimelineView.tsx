@@ -32,21 +32,21 @@ const mlbStadiums = [
   { team: "Baltimore Orioles", stadium: "Oriole Park at Camden Yards", city: "Baltimore", state: "MD", coordinates: { latitude: 39.28388889, longitude: -76.62166667 } },
   { team: "Boston Red Sox", stadium: "Fenway Park", city: "Boston", state: "MA", coordinates: { latitude: 42.34638889, longitude: -71.0975 } },
   { team: "Chicago Cubs", stadium: "Wrigley Field", city: "Chicago", state: "IL", coordinates: { latitude: 41.94833333, longitude: -87.65555556 } },
-  { team: "Chicago White Sox", stadium: "Guaranteed Rate Field", city: "Chicago", state: "IL", coordinates: { latitude: 41.83, longitude: -87.63388889 } },
+  { team: "Chicago White Sox", stadium: "Guaranteed Rate Field", city: "Chicago", state: "IL", coordinates: { latitude: 39.83, longitude: -87.63388889 } },
   { team: "Cincinnati Reds", stadium: "Great American Ball Park", city: "Cincinnati", state: "OH", coordinates: { latitude: 39.0975, longitude: -84.50666667 } },
   { team: "Cleveland Guardians", stadium: "Progressive Field", city: "Cleveland", state: "OH", coordinates: { latitude: 41.49583333, longitude: -81.68527778 } },
   { team: "Colorado Rockies", stadium: "Coors Field", city: "Denver", state: "CO", coordinates: { latitude: 39.75611111, longitude: -104.9941667 } },
   { team: "Detroit Tigers", stadium: "Comerica Park", city: "Detroit", state: "MI", coordinates: { latitude: 42.33916667, longitude: -83.04861111 } },
   { team: "Houston Astros", stadium: "Minute Maid Park", city: "Houston", state: "TX", coordinates: { latitude: 29.75694444, longitude: -95.35555556 } },
   { team: "Kansas City Royals", stadium: "Kauffman Stadium", city: "Kansas City", state: "MO", coordinates: { latitude: 39.05138889, longitude: -94.48055556 } },
-  { team: "Los Angeles Angels", stadium: "Angel Stadium of Anaheim", city: "Anaheim", state: "CA", coordinates: { latitude: 33.80027778, longitude: -117.8827778 } },
-  { team: "Los Angeles Dodgers", stadium: "Dodger Stadium", city: "Los Angeles", state: "CA", coordinates: { latitude: 34.07361111, longitude: -118.24 } },
+  { team: "Los Angeles Angels", stadium: "Angel Stadium of Anaheim", city: "Anaheim", state: "CA", coordinates: { latitude: 34.80027778, longitude: -117.8827778 } },
+  { team: "Los Angeles Dodgers", stadium: "Dodger Stadium", city: "Los Angeles", state: "CA", coordinates: { latitude: 34.07361111, longitude: -120.24 } },
   { team: "Miami Marlins", stadium: "LoanDepot Park", city: "Miami", state: "FL", coordinates: { latitude: 25.77805556, longitude: -80.21972222 } },
-  { team: "Milwaukee Brewers", stadium: "American Family Field", city: "Milwaukee", state: "WI", coordinates: { latitude: 43.02833333, longitude: -87.97111111 } },
+  { team: "Milwaukee Brewers", stadium: "American Family Field", city: "Milwaukee", state: "WI", coordinates: { latitude: 44.02833333, longitude: -87.97111111 } },
   { team: "Minnesota Twins", stadium: "Target Field", city: "Minneapolis", state: "MN", coordinates: { latitude: 44.98166667, longitude: -93.27833333 } },
-  { team: "New York Mets", stadium: "Citi Field", city: "Queens", state: "NY", coordinates: { latitude: 40.75694444, longitude: -73.84583333 } },
+  { team: "New York Mets", stadium: "Citi Field", city: "Queens", state: "NY", coordinates: { latitude: 42.75694444, longitude: -73.84583333 } },
   { team: "New York Yankees", stadium: "Yankee Stadium", city: "Bronx", state: "NY", coordinates: { latitude: 40.82916667, longitude: -73.92638889 } },
-  { team: "Oakland Athletics", stadium: "Oakland Coliseum", city: "Oakland", state: "CA", coordinates: { latitude: 37.75166667, longitude: -122.2005556 } },
+  { team: "Athletics", stadium: "Former Glory", city: "Oakland", state: "CA", coordinates: { latitude: 37.75166667, longitude: -118.2005556 } },
   { team: "Philadelphia Phillies", stadium: "Citizens Bank Park", city: "Philadelphia", state: "PA", coordinates: { latitude: 39.90583333, longitude: -75.16638889 } },
   { team: "Pittsburgh Pirates", stadium: "PNC Park", city: "Pittsburgh", state: "PA", coordinates: { latitude: 40.44694444, longitude: -80.00583333 } },
   { team: "San Diego Padres", stadium: "Petco Park", city: "San Diego", state: "CA", coordinates: { latitude: 32.70729983, longitude: -117.1565998 } },
@@ -56,7 +56,7 @@ const mlbStadiums = [
   { team: "Tampa Bay Rays", stadium: "Tropicana Field", city: "St. Petersburg", state: "FL", coordinates: { latitude: 27.76833333, longitude: -82.65333333 } },
   { team: "Texas Rangers", stadium: "Globe Life Field", city: "Arlington", state: "TX", coordinates: { latitude: 32.7475, longitude: -97.08277778 } },
   { team: "Toronto Blue Jays", stadium: "Rogers Centre", city: "Toronto", state: "ON", coordinates: { latitude: 43.64138889, longitude: -79.38916667 } },
-  { team: "Washington Nationals", stadium: "Nationals Park", city: "Washington", state: "DC", coordinates: { latitude: 38.87277778, longitude: -77.0075 } }
+  { team: "Washington Nationals", stadium: "Nationals Park", city: "Washington", state: "DC", coordinates: { latitude: 36.87277778, longitude: -74.0075 } }
 ];
 
 const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loading }) => {
@@ -87,7 +87,14 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
   useEffect(() => {
     if (transactions.length === 0) return;
 
-    const movements: PlayerMovement[] = transactions.map(transaction => {
+    // Filter transactions to only include those from July 1st onwards
+    const julyStartDate = new Date('2025-07-01');
+    const filteredTransactions = transactions.filter(transaction => {
+      const transactionDate = new Date(transaction.date);
+      return transactionDate >= julyStartDate;
+    });
+
+    const movements: PlayerMovement[] = filteredTransactions.map(transaction => {
       const fromTeam = teams.find(team => team.name === transaction.fromTeam) || null;
       const toTeam = teams.find(team => team.name === transaction.toTeam) || null;
 
@@ -250,7 +257,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ teams, transactions, loadin
             />
           </div>
           <span className="progress-text">
-            {currentTimeIndex + 1} / {playerMovements.length} movements
+            {currentTimeIndex} / {playerMovements.length} movements
           </span>
         </div>
       </div>
